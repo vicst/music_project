@@ -1,6 +1,7 @@
 import os, glob
 import hdf5_getters
 from inspect import getmembers, isfunction
+import csv
 
 ''' Posibble attributtes
 ['get_analysis_sample_rate', 'get_artist_7digitalid', 'get_artist_familiarity', 'get_artist_hotttnesss',
@@ -15,6 +16,8 @@ from inspect import getmembers, isfunction
  'get_song_id', 'get_start_of_fade_out', 'get_tatums_confidence', 'get_tatums_start', 'get_tempo',
  'get_time_signature', 'get_time_signature_confidence', 'get_title', 'get_track_7digitalid', 'get_track_id',
  'get_year',open_h5_file_read]'''
+
+
 
 #returns a list of the methods above, excluding the ones specified in not_desired parameter
 def get_desired_mehods(not_desired=['get_analysis_sample_rate','get_key','get_key_confidence','get_audio_md5','open_h5_file_read','get_title','get_analysis_sample_rate', 'get_artist_7digitalid','get_release_7digitalid','get_artist_id','get_artist_mbid','get_sections_confidence', 'get_sections_start', 'get_segments_confidence',
@@ -35,23 +38,32 @@ def get_desired_mehods(not_desired=['get_analysis_sample_rate','get_key','get_ke
 
 def get_all(basedir, ext = ".h5"):
     desired_mehods = get_desired_mehods()
+    header = []
     songs = {}
+    attributes ={}
     for root, dirs, files in os.walk(basedir):
         files = glob.glob(os.path.join(root,'*' + ext))
         for file in files:
             h5 = hdf5_getters.open_h5_file_read(file)
-            attributes = []
+            #attributes = []
             #print (type(h5))
             #print (h5.root)
             print(hdf5_getters.get_title(h5))
             for method in desired_mehods:
+                header.append(method.__name__)
+            with open('Cantece.csv', 'a') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames = header)
+                writer.writeheader()
+            for method in desired_mehods:
                 attr = method(h5)
-                print (method.__name__)
                 print(attr)
                 print(type(attr))
-                attributes.append(attr)
-            songs[hdf5_getters.get_title(h5)] = attributes
-            h5.close()
+                #attributes.append(attr)
+                #songs[hdf5_getters.get_title(h5)] = attributes
+                attributes[method.__name__] = attr
+            with open('Cantece.csv', 'a') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames = header)
+                writer.writerow(attributes)
 
 
 
