@@ -37,31 +37,31 @@ def get_desired_mehods(not_desired=['get_analysis_sample_rate','get_key','get_ke
             #desired_names.append(field[0])
     return desired
 
-def get_velues(element):
+#converts numpy element in python data type
+def get_values(element):
     if isinstance(element, numpy.bytes_) or isinstance(list_attr[0], numpy.unicode_):
         value = attr.decode("utf-8")
     elif isinstance(element, numpy.int_):
         value = int(attr)
     elif isinstance(element, numpy.float_) or  isinstance(element, numpy.cfloat):
         value = float(element)
-    return value
+    return [value, type(value)]
 
 # creates a table for each list type attribute and populates the fields witin it
 def create_and_populate(is_byte, table_name, list_attr):
     column_name = "nume_" + table_name
-    if is_byte:
-        column_type = "text"
-    else:
-        column_type = "integer"
+    list_type = get_values(list_attr[0])
+    if list_type[1] == str:
+        column_type = "TEXT"
+    elif list_type[1] == int:
+        column_type = "INTEGER"
+    elif list_type[1] == float:
+        column_type = "REAL"
     sql_exp = "CREATE TABLE IF NOT EXISTS {0}({1} {2}, unique({1}));".format(table_name, column_name, column_type)
     print (sql_exp)
     cursor.execute(sql_exp)
     for attr in list_attr:
-        if is_byte:
-            value = attr.decode("utf-8")
-            print (type(value))
-        else:
-            value = int(attr)
+        value = get_values(attr[0])
         sql_insert = r"""INSERT OR IGNORE INTO {0}({1}) VALUES ({2});""".format(table_name, column_name, repr(value))
         print (sql_insert)
         cursor.execute(sql_insert)
@@ -81,35 +81,52 @@ def tables_from_lists_func(met, list_attr):
         create_and_populate(is_byte,table_name,list_attr)
 
 
-def get_all(basedir, ext = ".h5"):
+def get_all(basedir, ext = ".h5", table, desired_methods):
     desired_mehods = get_desired_mehods()
     header = []
     attributes ={}
     for method in desired_mehods:
         header.append(method.__name__)
-    with open('Cantece.csv', 'w',newline='') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=header)
-        writer.writeheader()
-        for root, dirs, files in os.walk(basedir):
-            files = glob.glob(os.path.join(root,'*' + ext))
-            for file in files:
-                h5 = hdf5_getters.open_h5_file_read(file)
-                #attributes = []
-                #print (type(h5))
-                #print (h5.root)
-                print(hdf5_getters.get_title(h5))
-                for method in desired_mehods:
-                    attr = method(h5)
-                    print (type(attr))
-                    print (isinstance(attr,numpy.ndarray))
-                    if (isinstance(attr,numpy.ndarray)):
-                        attr_list = list(attr)
-                        print (method)
-                        tables_from_lists_func(method,attr_list)
-                    attributes[method.__name__] = attr
-                writer = csv.DictWriter(csv_file, fieldnames = header)
-                writer.writerow(attributes)
-                h5.close()
+    for file in files:
+        h5 = hdf5_getters.open_h5_file_read(file)
+        print(hdf5_getters.get_title(h5))
+        for method in desired_mehods:
+            attr = method(h5)
+            value = get_values(attr)
+            # daca atributul este o lista, se creaza un tabel cu denumirea atributului si valorile din lista
+            if (isinstance(attr, numpy.ndarray)):
+                attr_list = list(attr)
+                print(method)
+                tables_from_lists_func(method, attr_list)
+            sql_ins_epr = "INSERT INTO {} VALUES (?)".format()
+            cursor.execute(sql_ins_epr, (value,))
+
+        h5.close()
+
+    # with open('Cantece.csv', 'w',newline='') as csv_file:
+    #     writer = csv.DictWriter(csv_file, fieldnames=header)
+    #     writer.writeheader()
+    #     for root, dirs, files in os.walk(basedir):
+    #         files = glob.glob(os.path.join(root,'*' + ext))
+    #         for file in files:
+    #             h5 = hdf5_getters.open_h5_file_read(file)
+    #             #attributes = []
+    #             #print (type(h5))
+    #             #print (h5.root)
+    #             print(hdf5_getters.get_title(h5))
+    #             for method in desired_mehods:
+    #                 attr = method(h5)
+    #                 print (type(attr))
+    #                 print (isinstance(attr,numpy.ndarray))
+    #                 #daca atributul este o lista, se creaza un tabel cu denumirea atributului si valorile din lista
+    #                 if (isinstance(attr,numpy.ndarray)):
+    #                     attr_list = list(attr)
+    #                     print (method)
+    #                     tables_from_lists_func(method,attr_list)
+    #                 attributes[method.__name__] = attr
+    #             writer = csv.DictWriter(csv_file, fieldnames = header)
+    #             writer.writerow(attributes)
+    #             h5.close()
     print (attributes)
 
 
