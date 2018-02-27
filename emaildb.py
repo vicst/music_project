@@ -15,6 +15,7 @@ fname = 'mail.txt'
 
 fh = open(fname)
 
+
 for line in fh:
     cur.execute('Select count From Counts where email = ? ', (line,))
     row = cur.fetchone()
@@ -28,5 +29,7 @@ sqlstr = "SELECT email, count FROM Counts"
 
 for row in cur.execute(sqlstr):
     print (str(row[0]))
+
+
 
 cur.close()
